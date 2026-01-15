@@ -1,0 +1,14 @@
+.env
+wenv
+venv
+env
+embeddings/*
+faces/*
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Logs / data
+data/status/*
+data/temp_faces/*

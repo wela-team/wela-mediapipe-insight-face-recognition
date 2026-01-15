@@ -1,0 +1,19 @@
+# Core
+numpy==1.26.4
+opencv-python==4.9.0.80
+
+# Face Detection
+mediapipe==0.10.14
+
+# Face Recognition (InsightFace)
+insightface==0.7.3
+onnxruntime==1.17.3
+
+# Similarity / ML utils
+scikit-learn==1.4.0
+
+# Image utilities
+Pillow==10.2.0
+
+# Memcache
+python-memcached==1.59

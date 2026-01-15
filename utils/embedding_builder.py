@@ -12,7 +12,7 @@ _project_root = Path(__file__).parent.parent
 if str(_project_root) not in sys.path:
     sys.path.insert(0, str(_project_root))
 
-from configs.config import EMBEDS_DIR
+from configs.config import EMBEDS_DIR, FACES_DIR
 
 
 class EmbeddingBuilder:
@@ -106,7 +106,7 @@ class EmbeddingBuilder:
 
 
 def build_embeddings(
-    samples_dir: str = "faces",
+    samples_dir: str = FACES_DIR,
     embeddings_dir: Optional[str] = None
 ) -> int:
     """
@@ -131,5 +131,5 @@ def build_embeddings(
 if __name__ == "__main__":
     import sys
     
-    samples_dir = sys.argv[1] if len(sys.argv) > 1 else "faces"
+    samples_dir = sys.argv[1] if len(sys.argv) > 1 else FACES_DIR
     build_embeddings(samples_dir)

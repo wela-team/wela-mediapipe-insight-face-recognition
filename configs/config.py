@@ -8,9 +8,10 @@ PROJECT_ROOT = Path(__file__).parent.parent
 
 # Directory paths
 DATA_DIR = PROJECT_ROOT / "data"
-EMBEDS_DIR = PROJECT_ROOT / "embeddings"
+EMBEDS_DIR = DATA_DIR / "embeddings"
 TEMP_DIR = DATA_DIR / "temp_faces"
 STATUS_DIR = DATA_DIR / "status"
+FACES_DIR = DATA_DIR / "faces"
 
 # File paths
 FLAG_FILE = STATUS_DIR / "recognized.flag"
@@ -46,3 +47,4 @@ DATA_DIR.mkdir(exist_ok=True)
 EMBEDS_DIR.mkdir(exist_ok=True)
 TEMP_DIR.mkdir(exist_ok=True)
 STATUS_DIR.mkdir(exist_ok=True)
+FACES_DIR.mkdir(exist_ok=True)

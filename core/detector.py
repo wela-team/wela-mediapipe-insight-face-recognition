@@ -12,6 +12,7 @@ from configs.config import (
     TEMP_DIR,
     STATUS_DIR,
     FLAG_FILE,
+    PROCESSING_FLAG_FILE,
     SAVE_INTERVAL,
     GREEN_DISPLAY_TIME,
     MEDIAPIPE_MODEL_SELECTION,
@@ -86,7 +87,7 @@ class FaceDetector:
     def _save_face_image(self, face_img: Any) -> Optional[Path]:
         """
         Save face image to temporary directory.
-        Skips saving if recognition flag file exists.
+        Skips saving if recognition flag file exists or processing is active.
 
         Args:
             face_img: Face image to save
@@ -96,6 +97,10 @@ class FaceDetector:
         """
         # Skip saving if recognition flag file exists
         if FLAG_FILE.exists():
+            return None
+        
+        # Skip saving if recognition is currently processing
+        if PROCESSING_FLAG_FILE.exists():
             return None
         
         current_time = time.time()

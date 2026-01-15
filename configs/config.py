@@ -15,6 +15,7 @@ FACES_DIR = DATA_DIR / "faces"
 
 # File paths
 FLAG_FILE = STATUS_DIR / "recognized.flag"
+PROCESSING_FLAG_FILE = STATUS_DIR / "processing.flag"
 
 # Timing constants
 SAVE_INTERVAL = 0.4  # seconds between face saves

@@ -86,13 +86,18 @@ class FaceDetector:
     def _save_face_image(self, face_img: Any) -> Optional[Path]:
         """
         Save face image to temporary directory.
+        Skips saving if recognition flag file exists.
 
         Args:
             face_img: Face image to save
 
         Returns:
-            Path to saved file, or None if save failed
+            Path to saved file, or None if save failed or skipped
         """
+        # Skip saving if recognition flag file exists
+        if FLAG_FILE.exists():
+            return None
+        
         current_time = time.time()
         if current_time - self.last_save_time < SAVE_INTERVAL:
             return None

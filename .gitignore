@@ -12,3 +12,5 @@ __pycache__/
 # Logs / data
 data/status/*
 data/temp_faces/*
+data/faces/*
+data/embeddings/*

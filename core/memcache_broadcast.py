@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Optional
 import memcache
 
-from configs.config import PROJECT_ROOT
+from configs.config import DATA_DIR
 
 
 class MemcacheBroadcaster:
@@ -34,7 +34,7 @@ class MemcacheBroadcaster:
         
         # Build mapping from recognized names to picture filenames
         if faces_dir is None:
-            faces_dir = PROJECT_ROOT / "faces"
+            faces_dir = DATA_DIR / "faces"
         self.faces_dir = Path(faces_dir)
         self.name_to_filename = {}
         self._build_filename_mapping()
@@ -76,12 +76,13 @@ class MemcacheBroadcaster:
                 self.cache[name] = current_time
         
         if should_send:
+            print(f"Sending face to memcache: {name}")
             # Get filename for this recognized face
             filename = self.name_to_filename.get(name, f"{name}.jpg")
             
             try:
                 # Set to memcache with JSON encoding
-                self.shared.set('face', json.dumps(filename))
+                # self.shared.set('face', json.dumps(filename))
                 print(f"[MEMCACHE] Broadcasted: {filename} (recognized: {name})")
                 return True
             except Exception as e:

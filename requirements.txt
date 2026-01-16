@@ -17,3 +17,6 @@ Pillow==10.2.0
 
 # Memcache
 python-memcached==1.59
+
+# WebSocket
+websockets>=12.0

@@ -40,8 +40,14 @@ CAMERA_INDEX = 0
 
 # Memcache settings
 MEMCACHE_SERVER = '127.0.0.1:11211'
-MEMCACHE_COOLDOWN = 60  # seconds between broadcasts for same person
-MEMCACHE_ENABLED = False  # Set to False to disable memcache broadcasting
+MEMCACHE_COOLDOWN = 30  # seconds between broadcasts for same person
+MEMCACHE_ENABLED = True  # Set to False to disable memcache broadcasting
+FACE_REGISTRATION_DELAY = 30  # seconds to wait before marking face as registered
+
+# WebSocket settings
+WEBSOCKET_URI = 'ws://localhost:8765'
+WEBSOCKET_COOLDOWN = 5  # seconds between broadcasts for same person
+WEBSOCKET_ENABLED = False  # Set to False to disable WebSocket broadcasting
 
 # Create necessary directories
 DATA_DIR.mkdir(exist_ok=True)

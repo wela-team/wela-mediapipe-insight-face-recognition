@@ -3,6 +3,7 @@
 import os
 import cv2
 import time
+import threading
 import numpy as np
 from pathlib import Path
 from typing import Dict, Optional, Tuple
@@ -11,7 +12,6 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from configs.config import (
     TEMP_DIR,
-    STATUS_DIR,
     EMBEDS_DIR,
     FLAG_FILE,
     PROCESSING_FLAG_FILE,
@@ -25,6 +25,10 @@ from configs.config import (
     MEMCACHE_SERVER,
     MEMCACHE_COOLDOWN,
     MEMCACHE_ENABLED,
+    WEBSOCKET_URI,
+    WEBSOCKET_COOLDOWN,
+    WEBSOCKET_ENABLED,
+    FACE_REGISTRATION_DELAY,
 )
 
 
@@ -276,6 +280,11 @@ class RecognitionProcessor:
         self.temp_dir = Path(temp_dir)
         self.recognizer = FaceRecognizer()
         
+        # Face registration queue: tracks recognized faces and their registration status
+        # Structure: {name: {"first_seen": timestamp, "registered": bool, "sent": bool}}
+        self.face_registry: Dict[str, Dict] = {}
+        self.registry_lock = threading.Lock()
+        
         # Initialize memcache broadcaster if enabled
         self.memcache_broadcaster = None
         if MEMCACHE_ENABLED:
@@ -290,6 +299,91 @@ class RecognitionProcessor:
                 print("[MEMCACHE] Warning: memcache module not installed, broadcasting disabled")
             except Exception as e:
                 print(f"[MEMCACHE] Warning: Failed to initialize broadcaster: {e}")
+        
+        # Initialize WebSocket broadcaster if enabled
+        self.websocket_broadcaster = None
+        if WEBSOCKET_ENABLED:
+            try:
+                from .websocket_broadcast import WebSocketBroadcaster
+                self.websocket_broadcaster = WebSocketBroadcaster(
+                    uri=WEBSOCKET_URI,
+                    cooldown=WEBSOCKET_COOLDOWN
+                )
+                print("[WEBSOCKET] Broadcaster initialized")
+            except ImportError:
+                print("[WEBSOCKET] Warning: websockets module not installed, broadcasting disabled")
+            except Exception as e:
+                print(f"[WEBSOCKET] Warning: Failed to initialize broadcaster: {e}")
+
+    def _register_face(self, name: str) -> bool:
+        print(f"Registering face: {name}")
+        """
+        Register a recognized face and check if it should be broadcasted.
+        If face is already registered, wait 10 seconds before allowing broadcast.
+        
+        Args:
+            name: Name of the recognized face
+            
+        Returns:
+            bool: True if face should be broadcasted, False if it's on cooldown
+        """
+        if name is None or name == "Unknown":
+            return False
+        
+        current_time = time.time()
+        
+        with self.registry_lock:
+            if name not in self.face_registry:
+                # First time seeing this face - register it
+                self.face_registry[name] = {
+                    "first_seen": current_time,
+                    "registered": False,
+                    "sent": False
+                }
+                return False  # Wait before first broadcast
+            
+            face_info = self.face_registry[name]
+            
+            # Check if 10 seconds have passed since first recognition
+            if not face_info["registered"]:
+                if current_time - face_info["first_seen"] >= FACE_REGISTRATION_DELAY:
+                    # Mark as registered after 10 seconds
+                    face_info["registered"] = True
+                    print(f"[REGISTRY] Face '{name}' registered after {FACE_REGISTRATION_DELAY}s delay")
+                    return True  # Now allow broadcast
+                else:
+                    # Still waiting for registration delay
+                    remaining = FACE_REGISTRATION_DELAY - (current_time - face_info["first_seen"])
+                    return False
+            else:
+                # Face is already registered, check memcache cooldown
+                return False
+    
+    def _update_face_sent(self, name: str) -> None:
+        """
+        Mark that a face has been sent to memcache.
+        
+        Args:
+            name: Name of the face that was sent
+        """
+        with self.registry_lock:
+            if name in self.face_registry:
+                self.face_registry[name]["sent"] = True
+    
+    def _cleanup_old_registry_entries(self) -> None:
+        """Remove old registry entries that are no longer needed."""
+        current_time = time.time()
+        # Keep entries for 5 minutes after registration
+        cleanup_age = 300  # 5 minutes
+        
+        with self.registry_lock:
+            to_remove = []
+            for name, info in self.face_registry.items():
+                if info["registered"] and (current_time - info["first_seen"]) > cleanup_age:
+                    to_remove.append(name)
+            
+            for name in to_remove:
+                del self.face_registry[name]
 
     def _process_image(self, image_path: Path) -> None:
         """
@@ -311,9 +405,26 @@ class RecognitionProcessor:
                 print(f"{image_path.name} → {name} ({score:.2f})")
                 self._signal_recognition()
                 
-                # Broadcast to memcache if valid recognition (not "Unknown")
-                if name != "Unknown" and self.memcache_broadcaster is not None:
-                    self.memcache_broadcaster.broadcast_face(name)
+                # Check if face should be broadcasted (registration delay logic)
+                if name != "Unknown":
+                    # should_broadcast = self._register_face(name)
+                    should_broadcast = True
+
+                    # if should_broadcast:
+                    #     print(f"Face {name} should be broadcasted")
+
+                    # print(f"Should broadcast: {should_broadcast}")
+                    # Broadcast to memcache if face is registered and should be broadcasted
+                    if should_broadcast and self.memcache_broadcaster is not None:
+                        if self.memcache_broadcaster.broadcast_face(name):
+                            self._update_face_sent(name)
+                    
+                    # Broadcast to WebSocket if face is registered and should be broadcasted
+                    if should_broadcast and self.websocket_broadcaster is not None:
+                        self.websocket_broadcaster.broadcast_face(name)
+                    
+                    # Cleanup old registry entries periodically
+                    self._cleanup_old_registry_entries()
 
         except Exception as e:
             print(f"❌ Error processing {image_path}: {e}")

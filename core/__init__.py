@@ -3,6 +3,7 @@
 from .detector import FaceDetector
 from .recognizer import FaceRecognizer, EmbeddingDatabase, RecognitionProcessor
 from .memcache_broadcast import MemcacheBroadcaster
+from .websocket_broadcast import WebSocketBroadcaster
 
 __all__ = [
     "FaceDetector",
@@ -10,4 +11,5 @@ __all__ = [
     "EmbeddingDatabase",
     "RecognitionProcessor",
     "MemcacheBroadcaster",
+    "WebSocketBroadcaster",
 ]

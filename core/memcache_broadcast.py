@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Optional
 import memcache
 
-from configs.config import DATA_DIR
+from configs.config import FACES_DIR
 
 
 class MemcacheBroadcaster:
@@ -34,7 +34,7 @@ class MemcacheBroadcaster:
         
         # Build mapping from recognized names to picture filenames
         if faces_dir is None:
-            faces_dir = DATA_DIR / "faces"
+            faces_dir = FACES_DIR
         self.faces_dir = Path(faces_dir)
         self.name_to_filename = {}
         self._build_filename_mapping()

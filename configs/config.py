@@ -5,6 +5,7 @@ from pathlib import Path
 
 # Project root directory
 PROJECT_ROOT = Path(__file__).parent.parent
+CUSTOM_ROOT_FACES = Path(__file__).resolve().parent.parent.parent
 
 # Directory paths
 DATA_DIR = PROJECT_ROOT / "data"
@@ -12,6 +13,9 @@ EMBEDS_DIR = DATA_DIR / "embeddings"
 TEMP_DIR = DATA_DIR / "temp_faces"
 STATUS_DIR = DATA_DIR / "status"
 FACES_DIR = DATA_DIR / "faces"
+# USE FOR CUSTOM DIRECTORY FACES
+# WELA_RFID_DIR = CUSTOM_ROOT_FACES / "welarfid"
+# FACES_DIR = WELA_RFID_DIR / "images"
 
 # File paths
 FLAG_FILE = STATUS_DIR / "recognized.flag"

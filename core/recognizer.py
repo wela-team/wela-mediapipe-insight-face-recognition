@@ -13,15 +13,12 @@ from sklearn.metrics.pairwise import cosine_similarity
 from configs.config import (
     TEMP_DIR,
     EMBEDS_DIR,
-    FLAG_FILE,
-    PROCESSING_FLAG_FILE,
     RECOGNITION_POLL_INTERVAL,
     RECOGNITION_THRESHOLD,
     INSIGHTFACE_MODEL_NAME,
     INSIGHTFACE_PROVIDERS,
     MIN_FACE_SIZE,
     MIN_FACE_DIMENSION_FOR_RECOGNITION,
-    FLAG_DELETE_DELAY,
     MEMCACHE_SERVER,
     MEMCACHE_COOLDOWN,
     MEMCACHE_ENABLED,
@@ -29,6 +26,13 @@ from configs.config import (
     WEBSOCKET_COOLDOWN,
     WEBSOCKET_ENABLED,
     FACE_REGISTRATION_DELAY,
+)
+
+from core.detector import (
+    signal_recognition,
+    signal_processing,
+    cleanup_processing_flag,
+    cleanup_flag,
 )
 
 
@@ -403,7 +407,7 @@ class RecognitionProcessor:
                 print(f"{image_path.name} → No face detected (image size: {img.shape})")
             else:
                 print(f"{image_path.name} → {name} ({score:.2f})")
-                self._signal_recognition()
+                signal_recognition()
                 
                 # Check if face should be broadcasted (registration delay logic)
                 if name != "Unknown":
@@ -429,13 +433,6 @@ class RecognitionProcessor:
         except Exception as e:
             print(f"❌ Error processing {image_path}: {e}")
 
-    def _signal_recognition(self) -> None:
-        """Write flag file to signal successful recognition."""
-        try:
-            FLAG_FILE.write_text("recognized")
-        except Exception as e:
-            print(f"⚠️ Could not write flag: {e}")
-
     def _cleanup_image(self, image_path: Path) -> None:
         """
         Clean up processed image file.
@@ -448,30 +445,6 @@ class RecognitionProcessor:
                 image_path.unlink()
         except Exception as e:
             print(f"⚠️ Could not delete {image_path}: {e}")
-
-    def _signal_processing(self) -> None:
-        """Write flag file to signal that processing is active."""
-        try:
-            PROCESSING_FLAG_FILE.write_text("processing")
-        except Exception as e:
-            print(f"⚠️ Could not write processing flag: {e}")
-
-    def _cleanup_processing_flag(self) -> None:
-        """Clean up processing flag file."""
-        try:
-            if PROCESSING_FLAG_FILE.exists():
-                PROCESSING_FLAG_FILE.unlink()
-        except Exception as e:
-            print(f"⚠️ Could not delete processing flag: {e}")
-
-    def _cleanup_flag(self) -> None:
-        """Clean up recognition flag file after delay."""
-        try:
-            if FLAG_FILE.exists():
-                time.sleep(FLAG_DELETE_DELAY)
-                FLAG_FILE.unlink()
-        except Exception as e:
-            print(f"⚠️ Could not delete flag: {e}")
 
     def process_loop(self) -> None:
         """Main processing loop that continuously checks for new face images."""
@@ -488,12 +461,12 @@ class RecognitionProcessor:
 
                 if not files:
                     # No files to process, remove processing flag if it exists
-                    self._cleanup_processing_flag()
+                    cleanup_processing_flag()
                     time.sleep(RECOGNITION_POLL_INTERVAL)
                     continue
 
                 # Signal that we're processing images
-                self._signal_processing()
+                signal_processing()
 
                 for image_path in files:
                     # Process image
@@ -501,16 +474,16 @@ class RecognitionProcessor:
                     
                     # Cleanup
                     self._cleanup_image(image_path)
-                    self._cleanup_flag()
+                    cleanup_flag()
 
                 # Cleanup processing flag after all images are processed
-                self._cleanup_processing_flag()
+                cleanup_processing_flag()
 
             except KeyboardInterrupt:
                 print("\n🛑 Recognition stopped by user")
-                self._cleanup_processing_flag()
+                cleanup_processing_flag()
                 break
             except Exception as e:
                 print(f"❌ Unexpected error in processing loop: {e}")
-                self._cleanup_processing_flag()
+                cleanup_processing_flag()
                 time.sleep(RECOGNITION_POLL_INTERVAL)

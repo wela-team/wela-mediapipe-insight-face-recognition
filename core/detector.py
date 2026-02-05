@@ -13,6 +13,7 @@ from configs.config import (
     STATUS_DIR,
     FLAG_FILE,
     PROCESSING_FLAG_FILE,
+    FLAG_DELETE_DELAY,
     SAVE_INTERVAL,
     GREEN_DISPLAY_TIME,
     MEDIAPIPE_MODEL_SELECTION,
@@ -20,6 +21,41 @@ from configs.config import (
     FACE_CROP_MARGIN,
     CAMERA_INDEX,
 )
+
+
+def signal_recognition() -> None:
+    """Write flag file to signal successful recognition."""
+    try:
+        FLAG_FILE.write_text("recognized")
+    except Exception as e:
+        print(f"⚠️ Could not write flag: {e}")
+
+
+def signal_processing() -> None:
+    """Write flag file to signal that processing is active."""
+    try:
+        PROCESSING_FLAG_FILE.write_text("processing")
+    except Exception as e:
+        print(f"⚠️ Could not write processing flag: {e}")
+
+
+def cleanup_processing_flag() -> None:
+    """Clean up processing flag file."""
+    try:
+        if PROCESSING_FLAG_FILE.exists():
+            PROCESSING_FLAG_FILE.unlink()
+    except Exception as e:
+        print(f"⚠️ Could not delete processing flag: {e}")
+
+
+def cleanup_flag() -> None:
+    """Clean up recognition flag file after delay."""
+    try:
+        if FLAG_FILE.exists():
+            time.sleep(FLAG_DELETE_DELAY)
+            FLAG_FILE.unlink()
+    except Exception as e:
+        print(f"⚠️ Could not delete flag: {e}")
 
 
 class FaceDetector:

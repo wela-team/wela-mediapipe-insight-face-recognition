@@ -8,18 +8,21 @@ PROJECT_ROOT = Path(__file__).parent.parent
 CUSTOM_ROOT_FACES = Path(__file__).resolve().parent.parent.parent
 
 # Directory paths
+# USE FOR CUSTOM DIRECTORY FACES
+# WELA_RFID_DIR = CUSTOM_ROOT_FACES / "welarfid"
+# FACES_DIR = WELA_RFID_DIR / "images"
 DATA_DIR = PROJECT_ROOT / "data"
 EMBEDS_DIR = DATA_DIR / "embeddings"
 TEMP_DIR = DATA_DIR / "temp_faces"
 STATUS_DIR = DATA_DIR / "status"
-FACES_DIR = DATA_DIR / "faces"
-# USE FOR CUSTOM DIRECTORY FACES
-# WELA_RFID_DIR = CUSTOM_ROOT_FACES / "welarfid"
-# FACES_DIR = WELA_RFID_DIR / "images"
+# FACES_DIR = DATA_DIR / "faces"
+FACES_DIR = CUSTOM_ROOT_FACES / "welarfid" / "images"
+
 
 # File paths
 FLAG_FILE = STATUS_DIR / "recognized.flag"
 PROCESSING_FLAG_FILE = STATUS_DIR / "processing.flag"
+DIRECTION_FLAG_FILE = STATUS_DIR / "direction.flag"  # "in" or "out"
 
 # Timing constants
 SAVE_INTERVAL = 0.4  # seconds between face saves
@@ -37,7 +40,7 @@ RECOGNITION_THRESHOLD = 0.45
 INSIGHTFACE_MODEL_NAME = "buffalo_l"
 INSIGHTFACE_PROVIDERS = ["CPUExecutionProvider"]
 MIN_FACE_SIZE = 50  # pixels
-MIN_FACE_DIMENSION_FOR_RECOGNITION = 200  # pixels
+MIN_FACE_DIMENSION_FOR_RECOGNITION = 50  # min height/width in pixels for recognition
 
 # Camera settings
 CAMERA_INDEX = 0

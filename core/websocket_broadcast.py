@@ -5,7 +5,7 @@ import time
 import threading
 import asyncio
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 import websockets
 
 from configs.config import PROJECT_ROOT, FACES_DIR
@@ -136,12 +136,17 @@ class WebSocketBroadcaster:
             self.connected = False
             return False
     
-    def broadcast_face(self, name: str) -> bool:
+    def broadcast_face(
+        self,
+        name: str,
+        kind: Literal["in", "out"] = "in",
+    ) -> bool:
         """
         Broadcast recognized face to WebSocket server if cooldown period has passed.
         
         Args:
             name: Name of the recognized face (must not be "Unknown" or None)
+            kind: "in" or "out" to indicate direction (e.g. entry vs exit)
         
         Returns:
             bool: True if broadcast was sent, False otherwise
@@ -150,28 +155,26 @@ class WebSocketBroadcaster:
             return False
         
         current_time = time.time()
+        cache_key = (name, kind)
         should_send = False
         
         with self.lock:
-            last_sent = self.cache.get(name, 0)
+            last_sent = self.cache.get(cache_key, 0)
             if current_time - last_sent >= self.cooldown:
                 should_send = True
-                self.cache[name] = current_time
+                self.cache[cache_key] = current_time
         
         if should_send:
-            # Get filename for this recognized face
             filename = self.name_to_filename.get(name, f"{name}.jpg")
-            
-            # Prepare message as JSON
             message_data = {
                 "type": "face_recognized",
                 "name": name,
-                "filename": filename
+                "filename": filename,
+                "kind": kind,
             }
             message = json.dumps(message_data)
             
             try:
-                # Send message using asyncio
                 if self.loop and self.loop.is_running():
                     future = asyncio.run_coroutine_threadsafe(
                         self._send_message_async(message),
@@ -179,7 +182,7 @@ class WebSocketBroadcaster:
                     )
                     success = future.result(timeout=2.0)
                     if success:
-                        print(f"[WEBSOCKET] Broadcasted: {filename} (recognized: {name})")
+                        print(f"[WEBSOCKET] Broadcasted: {filename} (recognized: {name}, kind: {kind})")
                         return True
                 else:
                     print("[WEBSOCKET] Event loop not running")

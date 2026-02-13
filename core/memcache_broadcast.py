@@ -4,7 +4,7 @@ import json
 import time
 import threading
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 import memcache
 
 from configs.config import FACES_DIR
@@ -29,7 +29,7 @@ class MemcacheBroadcaster:
         """
         self.shared = memcache.Client([server], debug=0)
         self.cooldown = cooldown
-        self.cache = {}  # Maps name -> last_sent_timestamp
+        self.cache = {}  # Maps (name, kind) -> last_sent_timestamp
         self.lock = threading.Lock()
         
         # Build mapping from recognized names to picture filenames
@@ -53,12 +53,17 @@ class MemcacheBroadcaster:
         
         print(f"[MEMCACHE] Mapped {len(self.name_to_filename)} face images to names")
     
-    def broadcast_face(self, name: str) -> bool:
+    def broadcast_face(
+        self,
+        name: str,
+        kind: Literal["in", "out"] = "in",
+    ) -> bool:
         """
         Broadcast recognized face to memcache if cooldown period has passed.
         
         Args:
             name: Name of the recognized face (must not be "Unknown" or None)
+            kind: "in" or "out" to indicate direction (e.g. entry vs exit)
         
         Returns:
             bool: True if broadcast was sent, False otherwise
@@ -67,23 +72,23 @@ class MemcacheBroadcaster:
             return False
         
         current_time = time.time()
+        cache_key = (name, kind)
         should_send = False
         
         with self.lock:
-            last_sent = self.cache.get(name, 0)
+            last_sent = self.cache.get(cache_key, 0)
             if current_time - last_sent >= self.cooldown:
                 should_send = True
-                self.cache[name] = current_time
+                self.cache[cache_key] = current_time
         
         if should_send:
-            print(f"Sending face to memcache: {name}")
-            # Get filename for this recognized face
+            print(f"Sending face to memcache: {name} ({kind})")
             filename = self.name_to_filename.get(name, f"{name}.jpg")
             
             try:
-                # Set to memcache with JSON encoding
-                # self.shared.set('face', json.dumps(filename))
-                print(f"[MEMCACHE] Broadcasted: {filename} (recognized: {name})")
+                payload = {"rfid": filename, "kind": kind}
+                self.shared.set('rfid', json.dumps(payload))
+                print(f"[MEMCACHE] Broadcasted: {filename} (recognized: {name}, kind: {kind})")
                 return True
             except Exception as e:
                 print(f"[MEMCACHE ERROR] Failed to send: {e}")

@@ -6,13 +6,14 @@ import os
 import time
 import uuid
 from pathlib import Path
-from typing import Optional, Any
+from typing import Optional, Any, Literal, Union
 
 from configs.config import (
     TEMP_DIR,
     STATUS_DIR,
     FLAG_FILE,
     PROCESSING_FLAG_FILE,
+    DIRECTION_FLAG_FILE,
     FLAG_DELETE_DELAY,
     SAVE_INTERVAL,
     GREEN_DISPLAY_TIME,
@@ -23,10 +24,16 @@ from configs.config import (
 )
 
 
-def signal_recognition() -> None:
-    """Write flag file to signal successful recognition."""
+def signal_recognition(direction: Optional[str] = None) -> None:
+    """Write flag file to signal successful recognition and optional in/out direction.
+
+    Args:
+        direction: "in" or "out" to signal recognition direction; None to skip direction flag.
+    """
     try:
         FLAG_FILE.write_text("recognized")
+        if direction in ("in", "out"):
+            DIRECTION_FLAG_FILE.write_text(direction)
     except Exception as e:
         print(f"⚠️ Could not write flag: {e}")
 
@@ -58,17 +65,37 @@ def cleanup_flag() -> None:
         print(f"⚠️ Could not delete flag: {e}")
 
 
+def cleanup_all_flags() -> None:
+    """Remove all status flags (recognized, processing, direction) when recognition is done."""
+    try:
+        if FLAG_FILE.exists():
+            FLAG_FILE.unlink()
+        if PROCESSING_FLAG_FILE.exists():
+            PROCESSING_FLAG_FILE.unlink()
+        if DIRECTION_FLAG_FILE.exists():
+            DIRECTION_FLAG_FILE.unlink()
+    except Exception as e:
+        print(f"⚠️ Could not delete flags: {e}")
+
+
 class FaceDetector:
     """Handles face detection using MediaPipe and manages face image saving."""
 
-    def __init__(self, camera_index: int = CAMERA_INDEX):
+    def __init__(
+        self,
+        camera_index: Union[int, str] = CAMERA_INDEX,
+        in_out: Optional[Literal["in", "out"]] = None,
+    ):
         """
         Initialize the face detector.
 
         Args:
-            camera_index: Index of the camera to use (default: 0)
+            camera_index: Camera device index (int, e.g. 0) or path to video file (str).
+                Use a video path when no camera is available (e.g. on WSL2).
+            in_out: "in" or "out" for window title (e.g. "IN - Detection")
         """
         self.camera_index = camera_index
+        self.in_out = in_out
         self.detector = self._initialize_detector()
         self.cap: Optional[cv2.VideoCapture] = None
         
@@ -227,9 +254,17 @@ class FaceDetector:
     def start(self) -> None:
         """Start the face detection loop."""
         self.cap = cv2.VideoCapture(self.camera_index)
-        
+
         if not self.cap.isOpened():
-            raise RuntimeError(f"Failed to open camera {self.camera_index}")
+            hint = ""
+            if isinstance(self.camera_index, int):
+                hint = (
+                    " If you're on WSL2, USB cameras often don't work. "
+                    "Try running with a video file: python detect_faces.py --video path/to/video.mp4"
+                )
+            raise RuntimeError(
+                f"Failed to open camera/source {self.camera_index!r}.{hint}"
+            )
 
         print("🟢 Face detection started...")
 
@@ -255,7 +290,8 @@ class FaceDetector:
                 self._draw_recognition_indicator(frame, current_time)
 
                 # Display frame
-                cv2.imshow("Detection", frame)
+                window_title = f"{self.in_out.upper()} - Detection" if self.in_out else "Detection"
+                cv2.imshow(window_title, frame)
 
                 # Exit on ESC key
                 if cv2.waitKey(1) & 0xFF == 27:

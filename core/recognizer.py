@@ -6,7 +6,7 @@ import time
 import threading
 import numpy as np
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, Literal
 from insightface.app import FaceAnalysis
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -33,6 +33,7 @@ from core.detector import (
     signal_processing,
     cleanup_processing_flag,
     cleanup_flag,
+    cleanup_all_flags,
 )
 
 
@@ -274,14 +275,20 @@ class FaceRecognizer:
 class RecognitionProcessor:
     """Processes face images from temporary directory and performs recognition."""
 
-    def __init__(self, temp_dir: Path = TEMP_DIR):
+    def __init__(
+        self,
+        temp_dir: Path = TEMP_DIR,
+        in_out: Optional[Literal["in", "out"]] = None,
+    ):
         """
         Initialize the recognition processor.
 
         Args:
             temp_dir: Directory containing temporary face images
+            in_out: "in" or "out" to set direction flag when signaling recognition
         """
         self.temp_dir = Path(temp_dir)
+        self.in_out = in_out
         self.recognizer = FaceRecognizer()
         
         # Face registration queue: tracks recognized faces and their registration status
@@ -407,7 +414,7 @@ class RecognitionProcessor:
                 print(f"{image_path.name} → No face detected (image size: {img.shape})")
             else:
                 print(f"{image_path.name} → {name} ({score:.2f})")
-                signal_recognition()
+                signal_recognition(direction=self.in_out)
                 
                 # Check if face should be broadcasted (registration delay logic)
                 if name != "Unknown":
@@ -419,13 +426,14 @@ class RecognitionProcessor:
 
                     # print(f"Should broadcast: {should_broadcast}")
                     # Broadcast to memcache if face is registered and should be broadcasted
+                    kind = self.in_out if self.in_out is not None else "in"
                     if should_broadcast and self.memcache_broadcaster is not None:
-                        if self.memcache_broadcaster.broadcast_face(name):
+                        if self.memcache_broadcaster.broadcast_face(name, kind=kind):
                             self._update_face_sent(name)
                     
                     # Broadcast to WebSocket if face is registered and should be broadcasted
                     if should_broadcast and self.websocket_broadcaster is not None:
-                        self.websocket_broadcaster.broadcast_face(name)
+                        self.websocket_broadcaster.broadcast_face(name, kind=kind)
                     
                     # Cleanup old registry entries periodically
                     self._cleanup_old_registry_entries()
@@ -460,8 +468,8 @@ class RecognitionProcessor:
                 files = [f for f in files if f.is_file()]
 
                 if not files:
-                    # No files to process, remove processing flag if it exists
-                    cleanup_processing_flag()
+                    # No files to process, remove all flags
+                    cleanup_all_flags()
                     time.sleep(RECOGNITION_POLL_INTERVAL)
                     continue
 
@@ -476,14 +484,14 @@ class RecognitionProcessor:
                     self._cleanup_image(image_path)
                     cleanup_flag()
 
-                # Cleanup processing flag after all images are processed
-                cleanup_processing_flag()
+                # Remove all flags when recognition batch is done
+                cleanup_all_flags()
 
             except KeyboardInterrupt:
                 print("\n🛑 Recognition stopped by user")
-                cleanup_processing_flag()
+                cleanup_all_flags()
                 break
             except Exception as e:
                 print(f"❌ Unexpected error in processing loop: {e}")
-                cleanup_processing_flag()
+                cleanup_all_flags()
                 time.sleep(RECOGNITION_POLL_INTERVAL)

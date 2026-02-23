@@ -73,7 +73,7 @@ class MemcacheBroadcaster:
         
         current_time = time.time()
         cache_key = (name, kind)
-        should_send = False
+        should_send = True
         
         with self.lock:
             last_sent = self.cache.get(cache_key, 0)
@@ -84,9 +84,12 @@ class MemcacheBroadcaster:
         if should_send:
             print(f"Sending face to memcache: {name} ({kind})")
             filename = self.name_to_filename.get(name, f"{name}.jpg")
-            
+            print("=========================")
+            print(f"filename: {name}")
+            print("=========================")
+
             try:
-                payload = {"rfid": filename, "kind": kind}
+                payload = {"id": name, "kind": "IN"}
                 self.shared.set('rfid', json.dumps(payload))
                 print(f"[MEMCACHE] Broadcasted: {filename} (recognized: {name}, kind: {kind})")
                 return True

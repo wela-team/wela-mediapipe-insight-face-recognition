@@ -67,11 +67,20 @@ build_embeddings("faces/", "embeds/")
 In one terminal, start the face detection system:
 
 ```bash
-python detect_faces.py
+python detect_faces.py [--camera {in|out}] 
+```
+
+**Arguments:**
+- `--camera` — Camera to use: `in` (built-in, default) or `out` (external). Uses `IN_CAMERA_INDEX` / `OUT_CAMERA_INDEX` from `configs/config.py`.
+
+Examples:
+```bash
+python detect_faces.py                    # Built-in camera (default)
+python detect_faces.py --camera out       # External camera
 ```
 
 This will:
-- Open your webcam
+- Open your webcam (or video file)
 - Detect faces using MediaPipe
 - Save cropped face images to `data/temp_faces/`
 - Display detection boxes and recognition status

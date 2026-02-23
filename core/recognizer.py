@@ -396,6 +396,13 @@ class RecognitionProcessor:
             for name in to_remove:
                 del self.face_registry[name]
 
+    def _kind_from_path(self, image_path: Path) -> str:
+        """Derive broadcast kind from image path (in/out subdir) or fallback to processor in_out."""
+        parent = image_path.parent
+        if parent != self.temp_dir and parent.name in ("in", "out"):
+            return parent.name
+        return self.in_out if self.in_out is not None else "in"
+
     def _process_image(self, image_path: Path) -> None:
         """
         Process a single face image for recognition.
@@ -409,12 +416,13 @@ class RecognitionProcessor:
                 return
 
             name, score = self.recognizer.recognize(img)
-            
+            kind = self._kind_from_path(image_path)
+
             if name is None:
                 print(f"{image_path.name} → No face detected (image size: {img.shape})")
             else:
                 print(f"{image_path.name} → {name} ({score:.2f})")
-                signal_recognition(direction=self.in_out)
+                signal_recognition(direction=kind)
                 
                 # Check if face should be broadcasted (registration delay logic)
                 if name != "Unknown":
@@ -426,7 +434,6 @@ class RecognitionProcessor:
 
                     # print(f"Should broadcast: {should_broadcast}")
                     # Broadcast to memcache if face is registered and should be broadcasted
-                    kind = self.in_out if self.in_out is not None else "in"
                     if should_broadcast and self.memcache_broadcaster is not None:
                         if self.memcache_broadcaster.broadcast_face(name, kind=kind):
                             self._update_face_sent(name)
@@ -464,8 +471,20 @@ class RecognitionProcessor:
                     time.sleep(RECOGNITION_POLL_INTERVAL)
                     continue
 
-                files = list(self.temp_dir.glob("*"))
-                files = [f for f in files if f.is_file()]
+                # Collect from temp_dir/in, temp_dir/out, and direct files in temp_dir (backward compat)
+                image_extensions = (".jpg", ".jpeg", ".png")
+                files: list = []
+                for sub in ("in", "out"):
+                    subdir = self.temp_dir / sub
+                    if subdir.exists():
+                        files.extend(
+                            f for f in subdir.iterdir()
+                            if f.is_file() and f.suffix.lower() in image_extensions
+                        )
+                files.extend(
+                    f for f in self.temp_dir.iterdir()
+                    if f.is_file() and f.suffix.lower() in image_extensions
+                )
 
                 if not files:
                     # No files to process, remove all flags

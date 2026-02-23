@@ -170,7 +170,11 @@ class FaceDetector:
         if current_time - self.last_save_time < SAVE_INTERVAL:
             return None
 
-        filename = TEMP_DIR / f"{uuid.uuid4().hex}.jpg"
+        # Save under in/ or out/ so recognizer can broadcast the correct kind
+        subdir = self.in_out if self.in_out in ("in", "out") else "in"
+        save_dir = TEMP_DIR / subdir
+        save_dir.mkdir(parents=True, exist_ok=True)
+        filename = save_dir / f"{uuid.uuid4().hex}.jpg"
         try:
             cv2.imwrite(str(filename), face_img)
             self.last_save_time = current_time

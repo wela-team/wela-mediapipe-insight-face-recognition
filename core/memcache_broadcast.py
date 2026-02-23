@@ -89,7 +89,7 @@ class MemcacheBroadcaster:
             print("=========================")
 
             try:
-                payload = {"id": name, "kind": "IN"}
+                payload = {"id": name, "kind": kind}
                 self.shared.set('rfid', json.dumps(payload))
                 print(f"[MEMCACHE] Broadcasted: {filename} (recognized: {name}, kind: {kind})")
                 return True

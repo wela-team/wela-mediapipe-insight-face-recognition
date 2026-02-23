@@ -45,7 +45,7 @@ MIN_FACE_DIMENSION_FOR_RECOGNITION = 50  # min height/width in pixels for recogn
 # Camera settings
 CAMERA_INDEX = 0
 IN_CAMERA_INDEX = 0
-OUT_CAMERA_INDEX = 1
+OUT_CAMERA_INDEX = 2
 
 # Memcache settings
 MEMCACHE_SERVER = '127.0.0.1:11211'

@@ -89,9 +89,9 @@ class MemcacheBroadcaster:
             print("=========================")
 
             try:
-                payload = {"id": name, "kind": kind}
+                payload = {"id": name, "kind": kind.capitalize()}
                 self.shared.set('rfid', json.dumps(payload))
-                print(f"[MEMCACHE] Broadcasted: {filename} (recognized: {name}, kind: {kind})")
+                print(f"[MEMCACHE] Broadcasted: {filename} (recognized: {name}, kind: {kind.capitalize()})")
                 return True
             except Exception as e:
                 print(f"[MEMCACHE ERROR] Failed to send: {e}")
